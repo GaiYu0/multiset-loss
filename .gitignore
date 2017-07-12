@@ -1,3 +1,4 @@
 .*.*.swp
 mnist.pkl.gz
 *.data
+*.pyc
