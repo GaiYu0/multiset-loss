@@ -4,6 +4,7 @@ import torch as th
 from torch.autograd import Variable
 from torch.optim import SGD, Adam
 from torch.utils.data import DataLoader, TensorDataset
+from network import RNN
 from network import Network
 from utilities import onehot, onehot_sequence, n_errors
 
@@ -38,10 +39,11 @@ test_labels = onehot_sequence(th.from_numpy(test_labels), 10)
 test_set = TensorDataset(test_data, test_labels)
 test_loader = DataLoader(test_set, args.batch_size)
 
-model = Network()
+model = RNN()
+# model = Network()
 model.cuda()
 loss_function = getattr(__import__('loss'), args.loss)
-optimizer = Adam(model.parameters(), lr=0e-2)
+optimizer = Adam(model.parameters(), lr=1e-2)
 # optimizer = SGD(model.parameters(), lr=1e-3, momentum=0.9)
 
 for epoch in range(args.n_epochs):
@@ -53,10 +55,12 @@ for epoch in range(args.n_epochs):
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
+#   import pdb; pdb.set_trace()
 
     if (index + 1) % args.interval == 0:
       print 'batch %d training loss %f' % (index + 1, loss.data[0])
 
+  '''
   total_n_errors = 0
   for index, batch in enumerate(validation_loader):
     data, labels = batch
@@ -64,7 +68,9 @@ for epoch in range(args.n_epochs):
     data = model(data)
     total_n_errors += n_errors(data, labels)
   print 'epoch %d total number of errors %d' % (epoch + 1, total_n_errors)
+  '''
 
+'''
 total_n_errors = 0
 for index, batch in enumerate(test_loader):
   data, labels = batch
@@ -72,3 +78,4 @@ for index, batch in enumerate(test_loader):
   data = model(data)
   total_n_errors += n_errors(data, labels)
 print 'epoch %d total number of errors %d' % (epoch + 1, total_n_errors)
+'''
