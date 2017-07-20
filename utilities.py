@@ -21,10 +21,11 @@ def onehot_sequence(labels, D, cuda=True):
   onehot_labels = th.cat(onehot_labels, 1)
   return onehot_labels
 
-def n_errors(data, labels):
-  data, labels = data.data, labels.data
-  _, p = th.max(data, 2)
-  p = th.squeeze(p)
-  onehot_p = onehot_sequence(p, 10)
-  n = th.sum(th.abs(onehot_p - labels))
+def n_matches(data, labels):
+  _, data = th.max(data, 2)
+  data = th.squeeze(data)
+  _, labels = th.max(labels, 2)
+  labels = th.squeeze(labels)
+  n = th.sum(th.prod(data == labels, 1))
+  n = n.data[0]
   return n

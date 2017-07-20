@@ -9,7 +9,7 @@ import numpy as np
 parser = ArgumentParser()
 parser.add_argument('--n', type=int)
 parser.add_argument('--path', type=str)
-parser.add_argument('--replace', type=bool, default=False)
+parser.add_argument('--replace', action='store_true', default=False)
 parser.add_argument('--size', type=int)
 parser.add_argument('--source', type=str, default='training')
 args = parser.parse_args()

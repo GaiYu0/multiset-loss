@@ -2,49 +2,48 @@ from argparse import ArgumentParser
 import joblib
 import torch as th
 from torch.autograd import Variable
-from torch.optim import SGD, Adam
+from torch.optim import Adam
 from torch.utils.data import DataLoader, TensorDataset
-from network import RNN
-from network import Network
-from utilities import onehot, onehot_sequence, n_errors
+from loss import loss as loss_function
+from network import CNN, RNN
+from utilities import onehot, onehot_sequence, n_matches
 
 parser = ArgumentParser()
-parser.add_argument('--batch_size', type=int)
-parser.add_argument('--gpu', type=int)
+parser.add_argument('--cnn-path', type=str, default='pretrained-cnn')
+parser.add_argument('--batch-size', type=int, default=64)
+parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--interval', type=int, default=100)
-parser.add_argument('--loss', type=str, default='loss')
-parser.add_argument('--n_epochs', type=int)
+parser.add_argument('--n', type=int, default=3)
+parser.add_argument('--n-epochs', type=int, default=10)
+parser.add_argument('--n-units', type=int, default=0)
+parser.add_argument('--pretrained-cnn', action='store_true', default=False)
 args = parser.parse_args()
+print args
 
 th.cuda.set_device(args.gpu)
 
-training_data, training_labels = joblib.load('training.data')
+training_data, training_labels = joblib.load('training-%d.data' % args.n)
 training_data = th.from_numpy(training_data)
-# training_labels = th.from_numpy(training_labels)
 training_labels = onehot_sequence(th.from_numpy(training_labels), 10)
 training_set = TensorDataset(training_data, training_labels)
 training_loader = DataLoader(training_set, args.batch_size)
 
-validation_data, validation_labels = joblib.load('validation.data')
+validation_data, validation_labels = joblib.load('validation-%d.data' % args.n)
 validation_data = th.from_numpy(validation_data)
-# validation_labels = th.from_numpy(validation_labels)
 validation_labels = onehot_sequence(th.from_numpy(validation_labels), 10)
 validation_set = TensorDataset(validation_data, validation_labels)
 validation_loader = DataLoader(validation_set, args.batch_size)
 
-test_data, test_labels = joblib.load('test.data')
+test_data, test_labels = joblib.load('test-%d.data' % args.n)
 test_data = th.from_numpy(test_data)
-# test_labels = th.from_numpy(test_labels)
 test_labels = onehot_sequence(th.from_numpy(test_labels), 10)
 test_set = TensorDataset(test_data, test_labels)
 test_loader = DataLoader(test_set, args.batch_size)
 
-model = RNN()
-# model = Network()
+cnn_path = args.cnn_path if args.pretrained_cnn else None
+model = RNN(args.n_units, 10, cnn_path)
 model.cuda()
-loss_function = getattr(__import__('loss'), args.loss)
 optimizer = Adam(model.parameters(), lr=1e-3)
-# optimizer = SGD(model.parameters(), lr=1e-3, momentum=0.9)
 
 for epoch in range(args.n_epochs):
   for index, batch in enumerate(training_loader):
@@ -54,28 +53,32 @@ for epoch in range(args.n_epochs):
     loss = loss_function(data, labels)
     optimizer.zero_grad()
     loss.backward()
+    if args.pretrained_cnn:
+      model.cnn_zero_grad()
     optimizer.step()
-#   import pdb; pdb.set_trace()
 
     if (index + 1) % args.interval == 0:
-      print 'batch %d training loss %f' % (index + 1, loss.data[0])
+      ns = float(data.size()[0])
+      nm = float(n_matches(data, labels))
+      ratio = nm / ns
+      print 'batch %d training loss %f ratio of matching %f' % (index + 1, loss.data[0], ratio)
 
-  '''
-  total_n_errors = 0
-  for index, batch in enumerate(validation_loader):
+  ns, nm = 0.0, 0.0
+  for index, batch in enumerate(training_loader):
     data, labels = batch
     data, labels = Variable(data.cuda()), Variable(labels.cuda())
     data = model(data)
-    total_n_errors += n_errors(data, labels)
-  print 'epoch %d total number of errors %d' % (epoch + 1, total_n_errors)
-  '''
+    ns += data.size()[0]
+    nm += n_matches(data, labels)
+  ratio = nm / ns
+  print 'epoch %d ratio of matching %f' % (epoch + 1, ratio)
 
-'''
-total_n_errors = 0
+ns, nm = 0.0, 0.0
 for index, batch in enumerate(test_loader):
   data, labels = batch
   data, labels = Variable(data.cuda()), Variable(labels.cuda())
   data = model(data)
-  total_n_errors += n_errors(data, labels)
-print 'epoch %d total number of errors %d' % (epoch + 1, total_n_errors)
-'''
+  ns += data.size()[0]
+  nm += n_matches(data, labels)
+print 'epoch %d total number of errors %d' % (epoch + 1, ratio)
+# import pdb; pdb.set_trace()

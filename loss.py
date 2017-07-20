@@ -5,41 +5,22 @@ from utilities import onehot
 
 '''
 def loss(data, labels):
-  labels = th.sum(lables.detach(), 1)
-  labels = th.squeeze(labels)
-  data = th.sum(data, 1)
-  data = th.squeeze(data)
-  loss = F.kl_div(labels, data)
-  N, T, C = data.size()
-  chunks = th.chunk(data, T, 1)
-'''
-
-'''
-import numpy as np
-def entropy(tensor):
-  # tensor (N, D)
-  tensor = tensor.numpy()
-  N, _ = tensor.shape
-  tensor = np.exp(tensor)
-  tensor = tensor[tensor > 1e-3]
-  tensor = -np.sum(tensor * np.log(tensor)) / N
-  return tensor
-'''
-
-def loss(data, labels):
   # data (N, T, C)
   # labels (N, T, C) no duplication
-  entropy = th.mean(data * th.log(data + 1e-5))
+  data = F.log_softmax(data)
+  entropy = th.mean(th.exp(data) * data)
   data = th.sum(data, 1)
   data = th.squeeze(data)
-  labels = th.sum(labels, 1)
-  labels = th.squeeze(labels)
-  kl = th.mean((labels - data) ** 2)
-  loss = kl - entropy
-  return loss
+  masks = th.sum(labels, 1)
+  masks = th.squeeze(masks)
+  likelihood = -th.mean(masks * data)
+  value = entropy + likelihood
+  return value
+'''
 
 '''
 def loss(data, labels):
+# import pdb; pdb.set_trace()
   # data (N, T, C)
   # labels (N, T, C) no duplication
 
@@ -63,8 +44,8 @@ def loss(data, labels):
   return loss
 '''
 
-'''
 def loss(data, labels):
+# import pdb; pdb.set_trace()
   # data (N, T, C)
   # labels (N, T, C) no duplication
   N, T, _ = data.size()
@@ -119,4 +100,3 @@ def compute_loss(out, y, use_cuda, discourage=False, backward_kl=False):
       mask = new_mask
   loss += (loss_c + loss_s).mean()
   return loss
-'''
