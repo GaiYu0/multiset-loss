@@ -43,7 +43,7 @@ model = RNN()
 # model = Network()
 model.cuda()
 loss_function = getattr(__import__('loss'), args.loss)
-optimizer = Adam(model.parameters(), lr=1e-2)
+optimizer = Adam(model.parameters(), lr=1e-3)
 # optimizer = SGD(model.parameters(), lr=1e-3, momentum=0.9)
 
 for epoch in range(args.n_epochs):

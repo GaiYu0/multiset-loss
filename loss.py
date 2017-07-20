@@ -14,6 +14,7 @@ def loss(data, labels):
   chunks = th.chunk(data, T, 1)
 '''
 
+'''
 import numpy as np
 def entropy(tensor):
   # tensor (N, D)
@@ -23,7 +24,21 @@ def entropy(tensor):
   tensor = tensor[tensor > 1e-3]
   tensor = -np.sum(tensor * np.log(tensor)) / N
   return tensor
+'''
 
+def loss(data, labels):
+  # data (N, T, C)
+  # labels (N, T, C) no duplication
+  entropy = th.mean(data * th.log(data + 1e-5))
+  data = th.sum(data, 1)
+  data = th.squeeze(data)
+  labels = th.sum(labels, 1)
+  labels = th.squeeze(labels)
+  kl = th.mean((labels - data) ** 2)
+  loss = kl - entropy
+  return loss
+
+'''
 def loss(data, labels):
   # data (N, T, C)
   # labels (N, T, C) no duplication
@@ -46,6 +61,7 @@ def loss(data, labels):
 
   loss = -th.mean(loss)
   return loss
+'''
 
 '''
 def loss(data, labels):
@@ -53,11 +69,15 @@ def loss(data, labels):
   # labels (N, T, C) no duplication
   N, T, _ = data.size()
   out = {}
-  out['cs'] = th.transpose(data, 1, 2)
-  out['ss'] = None
+  out['cs'] = th.chunk(data, T, 1)
+  out['cs'] = map(th.squeeze, out['cs'])
+  out['cs'] = map(F.log_softmax, out['cs'])
+  out['cs'] = tuple(th.unsqueeze(ch, 2) for ch in out['cs'])
+  out['cs'] = th.cat(out['cs'], 2)
   out['ss'] = th.zeros(N, 1, T)
   out['ss'][:, :, -1] = 1
   out['ss'] = Variable(out['ss'].cuda())
+  out['ss'] = None
   _, y = th.max(labels, 2)
   y = th.squeeze(y)
   return compute_loss(out, y, True)
