@@ -3,7 +3,6 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from utilities import onehot, jsd
 
-'''
 def loss(data, labels):
   """ A wrapper for the loss function implemented by Jialin and Helen.
   data: (N, T, C)
@@ -100,9 +99,7 @@ def loss(data, labels):
   loss = -th.mean(loss)
 
   return loss
-'''
 
-'''
 def loss(data, labels):
   """
   Instead of computing loss step by step, this loss function aggregates distributions
@@ -139,7 +136,6 @@ def loss(data, labels):
   entropy = th.mean(data * th.log(data))
 
   return div + entropy
-'''
 
 def loss(data, labels):
   """ Loss function based on reinforcement learning.
