@@ -15,7 +15,7 @@ parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--interval', type=int, default=100)
 parser.add_argument('--n', type=int, default=3)
 parser.add_argument('--n-epochs', type=int, default=10)
-parser.add_argument('--n-units', type=int, default=0)
+parser.add_argument('--n-units', type=int, default=0) # deactivate RNN if n-units is 0
 parser.add_argument('--pretrained-cnn', action='store_true', default=False)
 args = parser.parse_args()
 print args

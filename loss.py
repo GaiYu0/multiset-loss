@@ -1,53 +1,15 @@
 import torch as th
 from torch.autograd import Variable
 import torch.nn.functional as F
-from utilities import onehot
+from utilities import onehot, jsd
 
 '''
 def loss(data, labels):
-  # data (N, T, C)
-  # labels (N, T, C) no duplication
-  data = F.log_softmax(data)
-  entropy = th.mean(th.exp(data) * data)
-  data = th.sum(data, 1)
-  data = th.squeeze(data)
-  masks = th.sum(labels, 1)
-  masks = th.squeeze(masks)
-  likelihood = -th.mean(masks * data)
-  value = entropy + likelihood
-  return value
-'''
+  """ A wrapper for the loss function implemented by Jialin and Helen.
+  data: (N, T, C)
+  labels: (N, T, C) no duplication
+  """
 
-'''
-def loss(data, labels):
-# import pdb; pdb.set_trace()
-  # data (N, T, C)
-  # labels (N, T, C) no duplication
-
-  N, T, C = data.size()
-  chunks = th.chunk(data, T, 1)
-  chunks = map(th.squeeze, chunks)
-  chunks = map(F.log_softmax, chunks)
-# print map(entropy, tuple(ch.data.cpu() for ch in chunks))
-  mask = th.sum(labels.data, 1)
-  mask = th.squeeze(mask)
-  loss = 0
-
-  for index, chunk in enumerate(chunks):
-    loss += th.sum(Variable(mask) * chunk, 1) / (T - index)
-    _, p = th.max(chunk, 1)
-    onehot_p = onehot(p.data, 10)
-    mask = mask - onehot_p
-    mask = th.max(th.zeros(mask.size()).cuda(), mask)
-
-  loss = -th.mean(loss)
-  return loss
-'''
-
-def loss(data, labels):
-# import pdb; pdb.set_trace()
-  # data (N, T, C)
-  # labels (N, T, C) no duplication
   N, T, _ = data.size()
   out = {}
   out['cs'] = th.chunk(data, T, 1)
@@ -64,6 +26,7 @@ def loss(data, labels):
   return compute_loss(out, y, True)
 
 def compute_loss(out, y, use_cuda, discourage=False, backward_kl=False):
+  """ By Jialin and Helen. """
   loss = 0.0
   loss_c = 0.0
   loss_s = 0.0
@@ -99,4 +62,122 @@ def compute_loss(out, y, use_cuda, discourage=False, backward_kl=False):
     else:
       mask = new_mask
   loss += (loss_c + loss_s).mean()
+  return loss
+
+def loss(data, labels):
+  """ A re-implementation of the loss function implemented by Jialin and Helen.
+
+  data (N, T, C)
+  labels (N, T, C) no duplication
+  """
+
+  N, T, C = data.size()
+
+  # partition an array with shape (N, T, C) into T arrays with shape (N, C)
+  chunks = th.chunk(data, T, 1)
+  chunks = map(th.squeeze, chunks)
+
+  chunks = map(F.log_softmax, chunks)
+
+  # one-hot encoding of c_t
+  mask = th.sum(labels.data, 1)
+  mask = th.squeeze(mask)
+
+  loss = 0
+  for index, chunk in enumerate(chunks):
+    # 1 / |c_t| \sum_{c \in c_t} \log(p_c)
+    loss += th.sum(Variable(mask) * chunk, 1) / (T - index)
+
+    # remove prediction from c_t
+    _, p = th.max(chunk, 1)
+    onehot_p = onehot(p.data, 10)
+    mask = mask - onehot_p
+
+    # in case the prediction does not belong to c_t
+    mask = th.max(th.zeros(mask.size()).cuda(), mask)
+
+  # likelihodd maximization is equivalent to negtive likelihood minimization
+  loss = -th.mean(loss)
+
+  return loss
+'''
+
+'''
+def loss(data, labels):
+  """
+  Instead of computing loss step by step, this loss function aggregates distributions
+  along temporal axis and only considers aggregated distributions.
+  This loss function consists of 
+    - Jensen-Shannon divergence between (aggregated) predicted and targeted distribution
+    - An entropy-based regularizer ensuring one-peak behavior of predicted distribution
+
+  data (N, T, C)
+  labels (N, T, C) no duplication
+  """
+
+  _, T, _ = data.size()
+  data = th.chunk(data, T, 1)
+  data = map(th.squeeze, data)
+  data = map(F.softmax, data)
+  data = map(lambda t: th.unsqueeze(t, 1), data)
+  data = th.cat(data, 1)
+
+  # aggregates distributions along temporal axis
+  data = th.mean(data, 1)
+  data = th.squeeze(data)
+  labels = th.mean(labels, 1)
+  labels = th.squeeze(labels)
+
+  # jsd
+  div = jsd(data, labels)
+
+  # for numerical stability
+  threshold = Variable(th.ones(data.size()) * 1e-5).cuda()
+  data = th.max(threshold, data)
+
+  # entropy regularizer
+  entropy = th.mean(data * th.log(data))
+
+  return div + entropy
+'''
+
+def loss(data, labels):
+  """ Loss function based on reinforcement learning.
+
+  data (N, T, C)
+  labels (N, T, C) no duplication
+  """
+  
+  N, T, C = data.size()
+
+  # partition an array with shape (N, T, C) into T arrays with shape (N, C)
+  chunks = th.chunk(data, T, 1)
+  chunks = map(th.squeeze, chunks)
+
+  chunks = map(F.log_softmax, chunks)
+
+  # c stands for c_t
+  c = th.sum(labels.data, 1)
+  c = th.squeeze(c)
+
+  loss = 0
+  for index, chunk in enumerate(chunks):
+    # compute reward (reward set to 1 if prediction belongs to c_t, -1 otherwise)
+    _, p = th.max(chunk, 1)
+    onehot_p = onehot(p.data, 10)
+    belonging_to = th.sum(c * onehot_p, 1) # whether prediction belongs to c_t
+    belonging_to = 1 - belonging_to # reverse
+    belonging_to = belonging_to.expand_as(onehot_p) # broadcast
+    offset = -2 * onehot_p * belonging_to
+    reward = onehot_p + offset # set reward as -1 for misprediction
+    reward = Variable(reward).cuda()
+
+    loss += th.sum(chunk * reward)
+
+    c = c - onehot_p # remove prediction from c_t
+    c = th.max(th.zeros(c.size()).cuda(), c) # in case of misprediction
+
+  # reward maximization is equivalent to negtive reward minimization
+  loss = -loss
+
   return loss

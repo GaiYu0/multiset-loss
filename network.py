@@ -59,5 +59,3 @@ class RNN(nn.Module):
     pre = tuple(th.unsqueeze(p, 1) for p in pre)
     pre = th.cat(pre, 1)
     return pre
-
-# import pdb; pdb.set_trace()

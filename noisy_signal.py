@@ -2,6 +2,7 @@ from __future__ import division
 from argparse import ArgumentParser
 import cPickle as pickle
 import gzip
+import numpy as np
 import torch as th
 from torch.autograd import Variable
 import torch.nn.functional as F
@@ -14,6 +15,7 @@ parser.add_argument('--batch-size', type=int, default=64)
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--interval', type=int, default=100)
 parser.add_argument('--n_epochs', type=int, default=10)
+parser.add_argument('--noise', type=float, default=0.75)
 args = parser.parse_args()
 
 th.cuda.set_device(args.gpu)
@@ -39,6 +41,9 @@ for epoch in range(args.n_epochs):
   for iteration, batch in enumerate(training_loader):
     data, labels = batch
     data, labels = data.cuda(), labels.cuda()
+    n_noises = int(args.noise * labels.size()[0])
+    noise = np.random.choice(np.arange(10), n_noises)
+    labels[:n_noises] = th.from_numpy(noise)
     data, labels = Variable(data), Variable(labels)
     data = model(data)
     loss = F.nll_loss(F.log_softmax(data), labels)
@@ -66,3 +71,4 @@ for epoch in range(args.n_epochs):
   print 'epoch %d validation error rate %f' % (epoch, error_rate)
 
 th.save(model.state_dict(), open('pretrained-cnn', 'w'))
+# import pdb; pdb.set_trace()

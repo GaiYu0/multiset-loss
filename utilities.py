@@ -1,4 +1,5 @@
 import torch as th
+import torch.nn.functional as F
 
 def onehot(labels, D, cuda=True):
   # labels (N, 1)
@@ -29,3 +30,12 @@ def n_matches(data, labels):
   n = th.sum(th.prod(data == labels, 1))
   n = n.data[0]
   return n
+
+def jsd(p, q):
+  """ Jensen-Shannon divergence.
+  p (N, D)
+  q (N, D)
+  """
+  m = p + q / 2
+  div = F.kl_div(m, p) + F.kl_div(m, q)
+  return div
