@@ -6,16 +6,19 @@ import gzip
 import joblib
 import numpy as np
 
+import os
+datapath = os.environ['datapath']
+
 parser = ArgumentParser()
 parser.add_argument('--n', type=int)
-parser.add_argument('--path', type=str)
+parser.add_argument('--path', type=str, default='seq.data')
 parser.add_argument('--replace', action='store_true', default=False)
 parser.add_argument('--size', type=int)
 parser.add_argument('--source', type=str, default='training')
 args = parser.parse_args()
 
 source_index = {'training': 0, 'validation': 1, 'test': 2}[args.source]
-data, labels = pickle.load(gzip.open('mnist.pkl.gz', 'rb'))[source_index]
+data, labels = pickle.load(gzip.open(datapath + 'mnist.pkl.gz', 'rb'))[source_index]
 data = (data - data.mean()) / data.std()
 
 if args.replace:
