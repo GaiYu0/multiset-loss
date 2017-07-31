@@ -75,6 +75,8 @@ for epoch in range(args.n_epochs):
         data, labels = batch
         if args.use_gpu:
             data, labels = Variable(data.cuda()), Variable(labels.cuda())
+        else:
+            data, labels = Variable(data), Variable(labels)
         data = model(data)
         ns += data.size()[0]
         nm += n_matches(data, labels)
@@ -86,6 +88,8 @@ for index, batch in enumerate(test_loader):
     data, labels = batch
     if args.use_gpu:
         data, labels = Variable(data.cuda()), Variable(labels.cuda())
+    else:
+        data, labels = Variable(data), Variable(labels)
     data = model(data)
     ns += data.size()[0]
     nm += n_matches(data, labels)
