@@ -26,19 +26,19 @@ if args.use_gpu:
 
 training_data, training_labels = joblib.load('training-%d.data' % args.n)
 training_data = th.from_numpy(training_data)
-training_labels = onehot_sequence(th.from_numpy(training_labels), 10)
+training_labels = onehot_sequence(th.from_numpy(training_labels), 10, args.use_gpu)
 training_set = TensorDataset(training_data, training_labels)
 training_loader = DataLoader(training_set, args.batch_size)
 
 validation_data, validation_labels = joblib.load('validation-%d.data' % args.n)
 validation_data = th.from_numpy(validation_data)
-validation_labels = onehot_sequence(th.from_numpy(validation_labels), 10)
+validation_labels = onehot_sequence(th.from_numpy(validation_labels), 10, args.use_gpu)
 validation_set = TensorDataset(validation_data, validation_labels)
 validation_loader = DataLoader(validation_set, args.batch_size)
 
 test_data, test_labels = joblib.load('test-%d.data' % args.n)
 test_data = th.from_numpy(test_data)
-test_labels = onehot_sequence(th.from_numpy(test_labels), 10)
+test_labels = onehot_sequence(th.from_numpy(test_labels), 10, args.use_gpu)
 test_set = TensorDataset(test_data, test_labels)
 test_loader = DataLoader(test_set, args.batch_size)
 
