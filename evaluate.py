@@ -56,7 +56,7 @@ for epoch in range(args.n_epochs):
         else:
             data, labels = Variable(data), Variable(labels)
         data = model(data)
-        loss = loss_function(data, labels)
+        loss = loss_function(data, labels, args.use_gpu)
         optimizer.zero_grad()
         loss.backward()
         if args.pretrained_cnn:

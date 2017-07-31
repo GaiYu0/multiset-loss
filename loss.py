@@ -3,7 +3,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from utilities import onehot, jsd
 
-def loss(data, labels):
+def loss(data, labels, use_cuda=False):
   """ A wrapper for the loss function implemented by Jialin and Helen.
   data: (N, T, C)
   labels: (N, T, C) no duplication
@@ -22,7 +22,7 @@ def loss(data, labels):
   out['ss'] = None
   _, y = th.max(labels, 2)
   y = th.squeeze(y)
-  return compute_loss(out, y, True)
+  return compute_loss(out, y, use_cuda)
 
 def compute_loss(out, y, use_cuda, discourage=False, backward_kl=False):
   """ By Jialin and Helen. """
@@ -104,7 +104,7 @@ def loss(data, labels):
   """
   Instead of computing loss step by step, this loss function aggregates distributions
   along temporal axis and only considers aggregated distributions.
-  This loss function consists of 
+  This loss function consists of
     - Jensen-Shannon divergence between (aggregated) predicted and targeted distribution
     - An entropy-based regularizer ensuring one-peak behavior of predicted distribution
 
@@ -137,13 +137,13 @@ def loss(data, labels):
 
   return div + entropy
 
-def loss(data, labels):
+def loss(data, labels, use_cuda=False):
   """ Loss function based on reinforcement learning.
 
   data (N, T, C)
   labels (N, T, C) no duplication
   """
-  
+
   N, T, C = data.size()
 
   # partition an array with shape (N, T, C) into T arrays with shape (N, C)
@@ -160,18 +160,24 @@ def loss(data, labels):
   for index, chunk in enumerate(chunks):
     # compute reward (reward set to 1 if prediction belongs to c_t, -1 otherwise)
     _, p = th.max(chunk, 1)
-    onehot_p = onehot(p.data, 10)
+    onehot_p = onehot(p.data, 10, use_cuda)
     belonging_to = th.sum(c * onehot_p, 1) # whether prediction belongs to c_t
     belonging_to = 1 - belonging_to # reverse
     belonging_to = belonging_to.expand_as(onehot_p) # broadcast
     offset = -2 * onehot_p * belonging_to
     reward = onehot_p + offset # set reward as -1 for misprediction
-    reward = Variable(reward).cuda()
+    if use_cuda:
+        reward = Variable(reward).cuda()
+    else:
+        reward = Variable(reward)
 
     loss += th.sum(chunk * reward)
 
     c = c - onehot_p # remove prediction from c_t
-    c = th.max(th.zeros(c.size()).cuda(), c) # in case of misprediction
+    if use_cuda:
+        c = th.max(th.zeros(c.size()).cuda(), c) # in case of misprediction
+    else:
+        c = th.max(th.zeros(c.size()), c) # in case of misprediction
 
   # reward maximization is equivalent to negtive reward minimization
   loss = -loss

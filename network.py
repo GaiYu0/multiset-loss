@@ -44,7 +44,8 @@ class RNN(nn.Module):
 
   def forward(self, data):
     N, T, _ = data.size()
-    h = Variable(th.zeros(N, self._n_units)).cuda()
+    # h = Variable(th.zeros(N, self._n_units)).cuda()
+    h = Variable(th.zeros(N, self._n_units))
     chunks = th.chunk(data, T, 1)
     chunks = map(th.squeeze, chunks)
     pre = []
