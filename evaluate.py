@@ -11,6 +11,7 @@ from utilities import onehot, onehot_sequence, n_matches
 parser = ArgumentParser()
 parser.add_argument('--cnn-path', type=str, default='pretrained-cnn')
 parser.add_argument('--batch-size', type=int, default=64)
+parser.add_argument('--loss-choice', type=str, default='loss-step-kl')
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--use_gpu', type=bool, default=False)
 parser.add_argument('--interval', type=int, default=100)
@@ -56,7 +57,7 @@ for epoch in range(args.n_epochs):
         else:
             data, labels = Variable(data), Variable(labels)
         data = model(data)
-        loss = loss_function(data, labels, args.use_gpu)
+        loss = loss_function(data, labels, args.loss_choice, args.use_gpu)
         optimizer.zero_grad()
         loss.backward()
         if args.pretrained_cnn:

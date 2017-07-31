@@ -3,7 +3,15 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from utilities import onehot, jsd
 
-def loss(data, labels, use_cuda=False):
+
+def loss(data, labels, lf_choice='loss-final-kl', use_cuda=False):
+    loss_d = {'loss-jl': loss_jl,
+              'loss-step-kl': loss_step_kl,
+              'loss-final-kl': loss_final_kl,
+              'loss-rl': loss_rl}
+    return loss_d[lf_choice](data, labels, use_cuda=False)
+
+def loss_jl(data, labels, use_cuda=False):
   """ A wrapper for the loss function implemented by Jialin and Helen.
   data: (N, T, C)
   labels: (N, T, C) no duplication
@@ -18,7 +26,10 @@ def loss(data, labels, use_cuda=False):
   out['cs'] = th.cat(out['cs'], 2)
   out['ss'] = th.zeros(N, 1, T)
   out['ss'][:, :, -1] = 1
-  out['ss'] = Variable(out['ss'].cuda())
+  if use_cuda:
+    out['ss'] = Variable(out['ss'].cuda())
+  else:
+    out['ss'] = Variable(out['ss'])
   out['ss'] = None
   _, y = th.max(labels, 2)
   y = th.squeeze(y)
@@ -63,7 +74,7 @@ def compute_loss(out, y, use_cuda, discourage=False, backward_kl=False):
   loss += (loss_c + loss_s).mean()
   return loss
 
-def loss(data, labels):
+def loss_step_kl(data, labels, use_cuda=False):
   """ A re-implementation of the loss function implemented by Jialin and Helen.
 
   data (N, T, C)
@@ -93,14 +104,17 @@ def loss(data, labels):
     mask = mask - onehot_p
 
     # in case the prediction does not belong to c_t
-    mask = th.max(th.zeros(mask.size()).cuda(), mask)
+    if use_cuda:
+        mask = th.max(th.zeros(mask.size()).cuda(), mask)
+    else:
+        mask = th.max(th.zeros(mask.size()), mask)
 
   # likelihodd maximization is equivalent to negtive likelihood minimization
   loss = -th.mean(loss)
 
   return loss
 
-def loss(data, labels):
+def loss_final_kl(data, labels, use_cuda=False):
   """
   Instead of computing loss step by step, this loss function aggregates distributions
   along temporal axis and only considers aggregated distributions.
@@ -129,7 +143,10 @@ def loss(data, labels):
   div = jsd(data, labels)
 
   # for numerical stability
-  threshold = Variable(th.ones(data.size()) * 1e-5).cuda()
+  if use_cuda:
+    threshold = Variable(th.ones(data.size()) * 1e-5).cuda()
+  else:
+    threshold = Variable(th.ones(data.size()) * 1e-5)
   data = th.max(threshold, data)
 
   # entropy regularizer
@@ -137,7 +154,7 @@ def loss(data, labels):
 
   return div + entropy
 
-def loss(data, labels, use_cuda=False):
+def loss_rl(data, labels, use_cuda=False):
   """ Loss function based on reinforcement learning.
 
   data (N, T, C)
