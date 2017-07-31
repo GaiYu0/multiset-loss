@@ -100,7 +100,7 @@ def loss_step_kl(data, labels, use_cuda=False):
 
     # remove prediction from c_t
     _, p = th.max(chunk, 1)
-    onehot_p = onehot(p.data, 10)
+    onehot_p = onehot(p.data, 10, use_cuda)
     mask = mask - onehot_p
 
     # in case the prediction does not belong to c_t
