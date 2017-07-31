@@ -72,13 +72,3 @@ for epoch in range(args.n_epochs):
     nm += n_matches(data, labels)
   ratio = nm / ns
   print 'epoch %d ratio of matching %f' % (epoch + 1, ratio)
-
-ns, nm = 0.0, 0.0
-for index, batch in enumerate(test_loader):
-  data, labels = batch
-  data, labels = Variable(data.cuda()), Variable(labels.cuda())
-  data = model(data)
-  ns += data.size()[0]
-  nm += n_matches(data, labels)
-print 'epoch %d total number of errors %d' % (epoch + 1, ratio)
-# import pdb; pdb.set_trace()
