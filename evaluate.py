@@ -64,7 +64,7 @@ for epoch in range(args.n_epochs):
       print 'batch %d training loss %f ratio of matching %f' % (index + 1, loss.data[0], ratio)
 
   ns, nm = 0.0, 0.0
-  for index, batch in enumerate(training_loader):
+  for index, batch in enumerate(validation_loader):
     data, labels = batch
     data, labels = Variable(data.cuda()), Variable(labels.cuda())
     data = model(data)
