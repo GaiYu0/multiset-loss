@@ -83,6 +83,7 @@ for epoch in range(args.n_epochs):
         ratio = nm / ns
         print 'epoch %d ratio of matching %f' % (epoch + 1, ratio)
 
+print('testing....')
 ns, nm = 0.0, 0.0
 for index, batch in enumerate(test_loader):
     data, labels = batch
@@ -93,5 +94,6 @@ for index, batch in enumerate(test_loader):
     data = model(data)
     ns += data.size()[0]
     nm += n_matches(data, labels)
-    print 'epoch %d total number of errors %d' % (epoch + 1, ratio)
+    ratio = nm / ns
+    print 'epoch %d ratio of matching %f' % (epoch + 1, ratio)
 # import pdb; pdb.set_trace()
