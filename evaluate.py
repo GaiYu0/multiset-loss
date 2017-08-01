@@ -66,7 +66,8 @@ vis = visdom.Visdom()
 loss_list = []
 loss_vis = Visualizer(vis, {'title': 'loss'})
 ratio_list = []
-ratio_vis = Visualizer(vis, {'title': 'ratio of matching'})
+ratio_vis = Visualizer(vis, {'title': 'training ratio of matching'})
+validation_vis = Visualizer(vis, {'title': 'validation ratio of matching'})
 
 for epoch in range(args.n_epochs):
   for index, batch in enumerate(training_loader):
@@ -103,6 +104,7 @@ for epoch in range(args.n_epochs):
     ns += data.size()[0]
     nm += n_matches(data, labels)
   ratio = nm / ns
+  validation_vis.extend((ratio,))
   print 'epoch %d ratio of matching %f' % (epoch + 1, ratio)
 
 ns, nm = 0.0, 0.0

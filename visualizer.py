@@ -7,7 +7,7 @@ class Visualizer(object):
     self._options = options
     self._start = start
 
-  def extend(self, s, clear=True):
+  def extend(self, s, clear=False):
     X = np.arange(self._start, self._start + len(s))
     Y = np.array(s)
     if self._window:
