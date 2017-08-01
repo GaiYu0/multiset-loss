@@ -1,3 +1,5 @@
+from pdb import set_trace as st
+
 import torch as th
 import torch.nn.functional as F
 
@@ -23,10 +25,16 @@ def onehot_sequence(labels, D, cuda=True):
   return onehot_labels
 
 def n_matches(data, labels):
+  """
+  Parameters
+  ----------
+  data: (N, T, C)
+  labels: (N, T, C)
+  """
   _, data = th.max(data, 2)
-  data = th.squeeze(data)
+  data = th.squeeze(data, 2)
   _, labels = th.max(labels, 2)
-  labels = th.squeeze(labels)
+  labels = th.squeeze(labels, 2)
   n = th.sum(th.prod(data == labels, 1))
   n = n.data[0]
   return n

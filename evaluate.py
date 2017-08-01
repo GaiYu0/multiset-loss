@@ -6,8 +6,10 @@ import torch as th
 from torch.autograd import Variable
 from torch.optim import Adam
 from torch.utils.data import DataLoader, TensorDataset
+import visdom
 from network import CNN, RNN
 from utilities import onehot, onehot_sequence, n_matches
+from visualizer import Visualizer
 
 parser = ArgumentParser()
 parser.add_argument('--pretrained-cnn-path', type=str, default='pretrained-cnn')
@@ -50,13 +52,18 @@ test_set = TensorDataset(test_data, test_labels)
 test_loader = DataLoader(test_set, args.batch_size)
 
 cnn_path = args.cnn_path if args.pretrained_cnn else None
-model = RNN(args.n_units, 10, cnn_path)
+model = RNN(args.n_units, 10, cnn_path, cuda)
 if args.gpu > -1:
   model.cuda()
-criterion = getattr(__import__('loss'), args.criterion)()
+criterion = getattr(__import__('criterions'), args.criterion)()
 if args.gpu > -1:
   criterion.cuda()
 optimizer = Adam(model.parameters(), lr=1e-3)
+vis = visdom.Visdom()
+loss_list = []
+loss_vis = Visualizer(vis, {'title': 'loss'})
+ratio_list = []
+ratio_vis = Visualizer(vis, {'title': 'ratio of matching'})
 
 for epoch in range(args.n_epochs):
   for index, batch in enumerate(training_loader):
@@ -72,10 +79,16 @@ for epoch in range(args.n_epochs):
       model.cnn_zero_grad()
     optimizer.step()
 
+    loss_list.append(loss.data[0])
+
+    ns = float(data.size()[0])
+    nm = float(n_matches(data, labels))
+    ratio = nm / ns
+    ratio_list.append(ratio)
+
     if (index + 1) % args.interval == 0:
-      ns = float(data.size()[0])
-      nm = float(n_matches(data, labels))
-      ratio = nm / ns
+      loss_vis.extend(loss_list, True)
+      ratio_vis.extend(ratio_list, True)
       print 'batch %d training loss %f ratio of matching %f' % (index + 1, loss.data[0], ratio)
 
   ns, nm = 0.0, 0.0

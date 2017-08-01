@@ -23,7 +23,7 @@ if args.replace:
   indices = np.random.choice(np.arange(10), shape)
 else:
   rows = (np.random.choice(np.arange(10), (1, args.n), replace=False) \
-    for i in range(args.size))
+          for i in range(args.size))
   indices = np.vstack(rows)
 indexed_data = data[indices]
 indexed_labels = labels[indices]

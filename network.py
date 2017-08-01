@@ -26,7 +26,7 @@ class CNN(nn.Module):
     return data
 
 class RNN(nn.Module):
-  def __init__(self, n_units, n_classes, cnn_path):
+  def __init__(self, n_units, n_classes, cnn_path, cuda):
     super(RNN, self).__init__()
     self._cnn = CNN()
     if n_units > 0:
@@ -34,6 +34,7 @@ class RNN(nn.Module):
       self._hh = nn.Linear(n_units, n_units)
       self._classifier = nn.Linear(n_units, n_classes)
     self._n_units = n_units
+    self._contextualize = lambda t: t.cuda() if cuda else t
 
     if cnn_path:
       self._cnn.load_state_dict(th.load(cnn_path))
@@ -44,7 +45,9 @@ class RNN(nn.Module):
 
   def forward(self, data):
     N, T, _ = data.size()
-    h = Variable(th.zeros(N, self._n_units)).cuda()
+    h = th.zeros(N, self._n_units)
+    h = self._contextualize(h)
+    h = Variable(h)
     chunks = th.chunk(data, T, 1)
     chunks = map(th.squeeze, chunks)
     pre = []
