@@ -35,7 +35,8 @@ def n_matches(data, labels):
   data = th.squeeze(data, 2)
   _, labels = th.max(labels, 2)
   labels = th.squeeze(labels, 2)
-  n = th.sum(th.prod(data == labels, 1))
+  indicator = th.prod(data == labels, 1).double()
+  n = th.sum(indicator)
   n = n.data[0]
   return n
 

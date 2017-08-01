@@ -1,3 +1,5 @@
+from pdb import set_trace as st
+
 import torch as th
 from torch.autograd import Variable
 import torch.nn as nn
@@ -37,22 +39,24 @@ class RNN(nn.Module):
     self._contextualize = lambda t: t.cuda() if cuda else t
 
     if cnn_path:
+      self._pretrained_cnn = True
       self._cnn.load_state_dict(th.load(cnn_path))
-      self._cnn.eval()
-
-  def cnn_zero_grad(self):
-    self._cnn.zero_grad()
+    else:
+      self._pretrained_cnn = False
 
   def forward(self, data):
     N, T, _ = data.size()
-    h = th.zeros(N, self._n_units)
-    h = self._contextualize(h)
-    h = Variable(h)
+    if self._n_units > 0:
+      h = th.zeros(N, self._n_units)
+      h = self._contextualize(h)
+      h = Variable(h)
     chunks = th.chunk(data, T, 1)
     chunks = map(th.squeeze, chunks)
     pre = []
     for ch in chunks:
       f = self._cnn(ch)
+      if self._pretrained_cnn:
+        f = f.detach()
       if self._n_units > 0:
         h = F.tanh(self._fh(f) + self._hh(h))
         c = self._classifier(h)

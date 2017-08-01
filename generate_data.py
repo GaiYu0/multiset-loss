@@ -1,4 +1,5 @@
 # wget http://deeplearning.net/data/mnist/mnist.pkl.gz
+from pdb import set_trace as st
 
 from argparse import ArgumentParser
 import cPickle as pickle
@@ -7,7 +8,7 @@ import joblib
 import numpy as np
 
 import os
-datapath = os.environ['datapath']
+datapath = os.environ.get('datapath', '')
 
 parser = ArgumentParser()
 parser.add_argument('--n', type=int)
@@ -22,13 +23,19 @@ data, labels = pickle.load(gzip.open(datapath + 'mnist.pkl.gz', 'rb'))[source_in
 data = (data - data.mean()) / data.std()
 
 if args.replace:
-  shape = (args.size, args.n)
-  indices = np.random.choice(np.arange(10), shape)
+  raise NotImplementedError()
 else:
-  rows = (np.random.choice(np.arange(10), (1, args.n), replace=False) \
-          for i in range(args.size))
-  indices = np.vstack(rows)
-indexed_data = data[indices]
-indexed_labels = labels[indices]
+  assert args.n < 11
+  rows = tuple(np.random.choice(np.arange(10), (1, args.n), replace=False) \
+               for _ in range(args.size))
+  categories = np.vstack(rows)
+  indices = np.copy(categories)
+  candidate_sets = tuple(np.argwhere(labels == i).flatten() for i in range(10))
+  for i, candidate_set in enumerate(candidate_sets):
+    mask = indices == i
+    n = np.sum(mask)
+    indices[mask] = np.random.choice(candidate_set, n, replace=True)
+  data = data[indices]
+  labels = categories
 
-joblib.dump((indexed_data, indexed_labels), open(args.path, 'wb'))
+joblib.dump((data, labels), open(args.path, 'wb'))

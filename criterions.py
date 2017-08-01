@@ -213,3 +213,18 @@ class rl_loss(Criterion):
     loss = -loss
 
     return loss
+
+class ce_loss(Criterion):
+  def __init__(self):
+    super(ce_loss, self).__init__()
+
+  def __call__(self, data, labels):
+    """
+    data (N, 1, C)
+    labels (N, 1, C) onehot-encoding
+    """
+    data = th.squeeze(data)
+    _, labels = th.max(labels, 2)
+    labels = th.squeeze(labels)
+    loss = F.cross_entropy(data, labels)
+    return loss

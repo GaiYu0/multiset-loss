@@ -1,3 +1,5 @@
+from __future__ import division
+
 from pdb import set_trace as st
 
 from argparse import ArgumentParser
@@ -15,6 +17,7 @@ parser = ArgumentParser()
 parser.add_argument('--pretrained-cnn-path', type=str, default='pretrained-cnn')
 parser.add_argument('--cnn-path', type=str, default='')
 parser.add_argument('--batch-size', type=int, default=64)
+parser.add_argument('--datapath', type=str, default='data')
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--interval', type=int, default=100)
 # --criterion=semi_cross_entropy/alternative_semi_cross_entropy/kl_loss/rl_loss
@@ -33,25 +36,25 @@ if args.gpu > -1:
 else:
   cuda = False
 
-training_data, training_labels = joblib.load('training-%d.data' % args.n)
+training_data, training_labels = joblib.load('%s/training-%d.data' % (args.datapath, args.n))
 training_data = th.from_numpy(training_data)
 training_labels = onehot_sequence(th.from_numpy(training_labels), 10, cuda)
 training_set = TensorDataset(training_data, training_labels)
-training_loader = DataLoader(training_set, args.batch_size)
+training_loader = DataLoader(training_set, args.batch_size, shuffle=True)
 
-validation_data, validation_labels = joblib.load('validation-%d.data' % args.n)
+validation_data, validation_labels = joblib.load('%s/validation-%d.data' % (args.datapath, args.n))
 validation_data = th.from_numpy(validation_data)
 validation_labels = onehot_sequence(th.from_numpy(validation_labels), 10, cuda)
 validation_set = TensorDataset(validation_data, validation_labels)
 validation_loader = DataLoader(validation_set, args.batch_size)
 
-test_data, test_labels = joblib.load('test-%d.data' % args.n)
+test_data, test_labels = joblib.load('%s/test-%d.data' % (args.datapath, args.n))
 test_data = th.from_numpy(test_data)
 test_labels = onehot_sequence(th.from_numpy(test_labels), 10, cuda)
 test_set = TensorDataset(test_data, test_labels)
 test_loader = DataLoader(test_set, args.batch_size)
 
-cnn_path = args.cnn_path if args.pretrained_cnn else None
+cnn_path = args.pretrained_cnn_path if args.pretrained_cnn else None
 model = RNN(args.n_units, 10, cnn_path, cuda)
 if args.gpu > -1:
   model.cuda()
@@ -74,15 +77,14 @@ for epoch in range(args.n_epochs):
     data = model(data)
     loss = criterion(data, labels)
     optimizer.zero_grad()
-    loss.backward()
-    if args.pretrained_cnn:
-      model.cnn_zero_grad()
+    if args.n_units > 0 or not args.pretrained_cnn:
+      loss.backward()
     optimizer.step()
 
     loss_list.append(loss.data[0])
 
-    ns = float(data.size()[0])
-    nm = float(n_matches(data, labels))
+    ns = data.size()[0]
+    nm = n_matches(data, labels)
     ratio = nm / ns
     ratio_list.append(ratio)
 
@@ -103,7 +105,6 @@ for epoch in range(args.n_epochs):
   ratio = nm / ns
   print 'epoch %d ratio of matching %f' % (epoch + 1, ratio)
 
-print 'testing...'
 ns, nm = 0.0, 0.0
 for index, batch in enumerate(test_loader):
   data, labels = batch
@@ -114,7 +115,7 @@ for index, batch in enumerate(test_loader):
   ns += data.size()[0]
   nm += n_matches(data, labels)
 ratio = nm / ns
-print 'test ratio of matching %f' % ratio
+print 'ratio of matching %f' % ratio
 
 if args.model_path:
   th.save(model.state_dict(), args.model_path)

@@ -1,4 +1,7 @@
+.*.swp
 .*.*.swp
 mnist.pkl.gz
 *.data
 *.pyc
+.ipynb_checkpoints/
+pretrained-cnn

@@ -14,17 +14,18 @@ parser.add_argument('--batch-size', type=int, default=64)
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--use_gpu', type=bool, default=False)
 parser.add_argument('--interval', type=int, default=100)
-parser.add_argument('--n_epochs', type=int, default=10)
+parser.add_argument('--n-epochs', type=int, default=10)
 args = parser.parse_args()
+print args
 
 if args.use_gpu:
     th.cuda.set_device(args.gpu)
 
 import os
-data_dir = os.environ['datapath']
+datapath = os.environ.get('datapath', '')
 
 (training_data, training_labels), (validation_data, validation_labels), (_, _) = \
-    pickle.load(gzip.open(data_dir + 'mnist.pkl.gz', 'rb'))
+    pickle.load(gzip.open(datapath + 'mnist.pkl.gz', 'rb'))
 
 training_data, training_labels = th.from_numpy(training_data), th.from_numpy(training_labels)
 training_data = training_data.view(-1, 1, 28, 28)
