@@ -107,6 +107,7 @@ class alternative_semi_cross_entropy(Criterion):
     loss = 0
     for index, chunk in enumerate(chunks):
       # 1 / |c_t| \sum_{c \in c_t} \log(p_c)
+      # TODO multiply by binary indicator or by number of occurence ?
       loss += th.sum(Variable(mask) * chunk, 1) / (T - index)
 
       # remove prediction from c_t
@@ -115,7 +116,7 @@ class alternative_semi_cross_entropy(Criterion):
       mask = mask - onehot_p
 
       # in case the prediction does not belong to c_t
-      mask = th.max(self._contextualize(th.zeros(mask.size())), mask)
+      mask = th.clamp(mask, min=0.0)
 
     # likelihodd maximization is equivalent to negtive likelihood minimization
     loss = -th.mean(loss)
@@ -155,10 +156,7 @@ class jsd_loss(Criterion):
     div = jsd(data, labels)
 
     # for numerical stability
-    threshold = th.ones(data.size()) * 1e-5
-    threshold = self._contextualize(threshold)
-    threshold = Variable(threshold)
-    data = th.max(threshold, data)
+    data = th.clamp(data, min=1e-5)
 
     # entropy regularizer
     entropy = th.mean(data * th.log(data))
@@ -193,7 +191,8 @@ class rl_loss(Criterion):
       # compute reward (reward set to 1 if prediction belongs to c_t, -1 otherwise)
       _, p = th.max(chunk, 1)
       onehot_p = onehot(p.data, 10, self._cuda)
-      belonging_to = th.sum(c * onehot_p, 1) # whether prediction belongs to c_t
+      indicator = th.clamp(c, max=1.0) # convert number of occurence to binary indicator
+      belonging_to = th.sum(indicator * onehot_p, 1) # whether prediction belongs to c_t
       not_belonging_to = 1 - belonging_to
       not_belonging_to = not_belonging_to.expand_as(onehot_p) # broadcast
       offset = -2 * onehot_p * not_belonging_to
@@ -204,9 +203,7 @@ class rl_loss(Criterion):
       loss += th.sum(chunk * reward)
 
       c = c - onehot_p # remove prediction from c_t
-      threshold = th.zeros(c.size())
-      threshold = self._contextualize(threshold)
-      c = th.max(threshold, c) # in case of misprediction
+      c = th.clamp(c, min=0.0) # in case of misprediction
 
     # reward maximization is equivalent to negtive reward minimization
     loss = -loss
