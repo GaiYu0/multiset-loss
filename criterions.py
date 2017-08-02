@@ -124,7 +124,7 @@ class alternative_semi_cross_entropy(Criterion):
 
 class jsd_loss(Criterion):
   def __init__(self):
-    super(kl_loss, self).__init__()
+    super(jsd_loss, self).__init__()
 
   def __call__(self, data, labels):
     """
@@ -219,11 +219,16 @@ class ce_loss(Criterion):
 
   def __call__(self, data, labels):
     """
-    data (N, 1, C)
-    labels (N, 1, C) onehot-encoding
+    data (N, T, C)
+    labels (N, T, C) onehot-encoding
     """
-    data = th.squeeze(data)
-    _, labels = th.max(labels, 2)
-    labels = th.squeeze(labels)
-    loss = F.cross_entropy(data, labels)
-    return loss
+    _, T, _ = data.size()
+    chunks = th.chunk(data, T, 1)
+    chunks = map(th.squeeze, chunks)
+    chunks = map(F.log_softmax, chunks)
+    chunks = map(lambda t: th.unsqueeze(t, 1), chunks)
+    data = th.cat(chunks, 1)
+    log_likelihood = data * labels
+    log_likelihood = th.mean(log_likelihood)
+    negtive_log_likelihood = -log_likelihood
+    return negtive_log_likelihood

@@ -5,3 +5,4 @@ mnist.pkl.gz
 *.pyc
 .ipynb_checkpoints/
 pretrained-cnn
+tensorboard-log/

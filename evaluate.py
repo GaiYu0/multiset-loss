@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader, TensorDataset
 import visdom
 from network import CNN, RNN
 from utilities import onehot, onehot_sequence, n_matches
-from visualizer import Visualizer
+from visualizer import VisdomVisualizer, TensorboardVisualizer
 
 parser = ArgumentParser()
 parser.add_argument('--pretrained-cnn-path', type=str, default='pretrained-cnn')
@@ -27,6 +27,9 @@ parser.add_argument('--n', type=int, default=3)
 parser.add_argument('--n-epochs', type=int, default=10)
 parser.add_argument('--n-units', type=int, default=0) # disable RNN if n-units is 0
 parser.add_argument('--pretrained-cnn', action='store_true', default=False)
+parser.add_argument('--tensorboard-log', type=str, default='')
+parser.add_argument('--tensorboard-path', type=str, default='tensorboard-log')
+parser.add_argument('--tensorboard-postfix', type=str, default='')
 args = parser.parse_args()
 print args
 
@@ -63,11 +66,18 @@ if args.gpu > -1:
   criterion.cuda()
 optimizer = Adam(model.parameters(), lr=1e-3)
 vis = visdom.Visdom()
+tb_path = args.tensorboard_path
+if args.tensorboard_log:
+  tb_path += '/%s' % args.tensorboard_log
+TensorboardVisualizer.configure(tb_path)
 loss_list = []
-loss_vis = Visualizer(vis, {'title': 'loss'})
+loss_vis = VisdomVisualizer(vis, {'title': 'loss'})
+loss_tb = TensorboardVisualizer('loss' + args.tensorboard_postfix)
 ratio_list = []
-ratio_vis = Visualizer(vis, {'title': 'training ratio of matching'})
-validation_vis = Visualizer(vis, {'title': 'validation ratio of matching'})
+ratio_vis = VisdomVisualizer(vis, {'title': 'training ratio of matching'})
+ratio_tb = TensorboardVisualizer('training-ratio-of-matching' + args.tensorboard_postfix)
+validation_vis = VisdomVisualizer(vis, {'title': 'validation ratio of matching'})
+validation_tb = TensorboardVisualizer('validation-ratio-of-matching' + args.tensorboard_postfix)
 
 for epoch in range(args.n_epochs):
   for index, batch in enumerate(training_loader):
@@ -91,7 +101,9 @@ for epoch in range(args.n_epochs):
 
     if (index + 1) % args.interval == 0:
       loss_vis.extend(loss_list, True)
+      loss_tb.extend(loss_list, True)
       ratio_vis.extend(ratio_list, True)
+      ratio_tb.extend(ratio_list, True)
       print 'batch %d training loss %f ratio of matching %f' % (index + 1, loss.data[0], ratio)
 
   ns, nm = 0.0, 0.0
@@ -105,6 +117,7 @@ for epoch in range(args.n_epochs):
     nm += n_matches(data, labels)
   ratio = nm / ns
   validation_vis.extend((ratio,))
+  validation_tb.extend((ratio,))
   print 'epoch %d ratio of matching %f' % (epoch + 1, ratio)
 
 ns, nm = 0.0, 0.0
