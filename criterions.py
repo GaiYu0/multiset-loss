@@ -37,7 +37,6 @@ class semi_cross_entropy(Criterion):
     out['ss'] = th.zeros(N, 1, T)
     out['ss'][:, :, -1] = 1
     out['ss'] = Variable(self._contextualize(out['ss']))
-    out['ss'] = None
     _, y = th.max(labels, 2)
     y = th.squeeze(y, 2)
     return self._compute_loss(out, y, self._cuda)
@@ -71,7 +70,7 @@ class semi_cross_entropy(Criterion):
         loss_c = loss_c - ymask * (cs[:, :, t] * mask).sum(1)
       else:
         loss_c = loss_c - ymask * (cs[:, :, t] * mask).sum(1) / th.max(th.cat((mask.sum(1), ones), 1), 1)[0]
-      # loss_s = loss_s - (ymask * th.log(1 - ss[:,:,t] + 1e-7) + (1 - ymask) * th.log(ss[:,:,t] + 1e-7))
+      loss_s = loss_s - (ymask * th.log(1 - ss[:,:,t] + 1e-7) + (1 - ymask) * th.log(ss[:,:,t] + 1e-7))
       new_mask = th.zeros(B, C+1).scatter_(1, preds.data.cpu()[:, t].unsqueeze(1), -1)[:, :C] + mask.data.cpu()
       new_mask[new_mask < 0] = 0
       if discourage:
@@ -123,7 +122,7 @@ class alternative_semi_cross_entropy(Criterion):
 
     return loss
 
-class kl_loss(Criterion):
+class jsd_loss(Criterion):
   def __init__(self):
     super(kl_loss, self).__init__()
 
@@ -195,9 +194,9 @@ class rl_loss(Criterion):
       _, p = th.max(chunk, 1)
       onehot_p = onehot(p.data, 10, self._cuda)
       belonging_to = th.sum(c * onehot_p, 1) # whether prediction belongs to c_t
-      belonging_to = 1 - belonging_to # reverse
-      belonging_to = belonging_to.expand_as(onehot_p) # broadcast
-      offset = -2 * onehot_p * belonging_to
+      not_belonging_to = 1 - belonging_to
+      not_belonging_to = not_belonging_to.expand_as(onehot_p) # broadcast
+      offset = -2 * onehot_p * not_belonging_to
       reward = onehot_p + offset # set reward as -1 for misprediction
       reward = self._contextualize(reward)
       reward = Variable(reward)

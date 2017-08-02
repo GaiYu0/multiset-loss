@@ -20,7 +20,7 @@ parser.add_argument('--batch-size', type=int, default=64)
 parser.add_argument('--datapath', type=str, default='data')
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--interval', type=int, default=100)
-# --criterion=semi_cross_entropy/alternative_semi_cross_entropy/kl_loss/rl_loss
+# --criterion=semi_cross_entropy/alternative_semi_cross_entropy/jsd_loss/rl_loss
 parser.add_argument('--criterion', type=str, default='semi_cross_entropy')
 parser.add_argument('--model-path', type=str, default='')
 parser.add_argument('--n', type=int, default=3)
