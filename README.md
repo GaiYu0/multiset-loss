@@ -14,4 +14,6 @@ ipython -m ipdb evaluate.py -- --n=3 --n-units=256 --pretrained-cnn
 
 ### TODO
 
-- [] 10 digits
+- [] Sequence of 10 digits
+- [] Experiment on sequences generated with replacement (especially, the performance of RL-based loss, which appears to be unplausible when length of sequence is 1)
+- [] Refactor visualization code
