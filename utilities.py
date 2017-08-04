@@ -45,6 +45,6 @@ def jsd(p, q):
   p (N, D)
   q (N, D)
   """
-  m = p + q / 2
+  m = (p + q) / 2
   div = F.kl_div(m, p) + F.kl_div(m, q)
   return div

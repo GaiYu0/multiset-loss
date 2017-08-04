@@ -2,8 +2,9 @@ from pdb import set_trace as st
 
 import torch as th
 from torch.autograd import Variable
+import torch.nn as nn
 import torch.nn.functional as F
-from utilities import onehot, jsd
+from utilities import onehot
 
 class Criterion(object):
   def __init__(self):
@@ -123,9 +124,9 @@ class alternative_semi_cross_entropy(Criterion):
 
     return loss
 
-class jsd_loss(Criterion):
+class regression_loss(Criterion):
   def __init__(self):
-    super(jsd_loss, self).__init__()
+    super(regression_loss, self).__init__()
 
   def __call__(self, data, labels):
     """
@@ -152,16 +153,16 @@ class jsd_loss(Criterion):
     labels = th.mean(labels, 1)
     labels = th.squeeze(labels)
 
-    # jsd
-    div = jsd(data, labels)
+    # regression
+    l1 = nn.L1Loss()(data, labels)
 
     # for numerical stability
     data = th.clamp(data, min=1e-5)
 
     # entropy regularizer
-    entropy = th.mean(data * th.log(data))
+    entropy = -th.mean(data * th.log(data))
 
-    return div + entropy
+    return l1 + entropy
 
 class rl_loss(Criterion):
   def __init__(self):
