@@ -27,7 +27,6 @@ class VisdomVisualizer(Visualizer):
     else:
       self._window = self._visdom.line(Y, X, opts=self._options)
 
-# TODO use Logger
 class TensorboardVisualizer(Visualizer):
   _logger = __import__('tensorboard_logger')
   def __init__(self, name, start=0):

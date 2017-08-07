@@ -125,8 +125,9 @@ class alternative_semi_cross_entropy(Criterion):
     return loss
 
 class regression_loss(Criterion):
-  def __init__(self):
+  def __init__(self, entropy_scale=1):
     super(regression_loss, self).__init__()
+    self._entropy_scale = entropy_scale
 
   def __call__(self, data, labels):
     """
@@ -156,13 +157,11 @@ class regression_loss(Criterion):
     # regression
     l1 = nn.L1Loss()(data, labels)
 
-    # for numerical stability
-    data = th.clamp(data, min=1e-5)
-
     # entropy regularizer
+    data = th.clamp(data, min=1e-5)
     entropy = -th.mean(data * th.log(data))
 
-    return l1 + entropy
+    return l1 + self._entropy_scale * entropy
 
 class rl_loss(Criterion):
   def __init__(self):

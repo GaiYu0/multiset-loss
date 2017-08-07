@@ -1,19 +1,26 @@
 # Multi-set loss
 
-### Generate data by:
+### Data generation
 
-ipython generate_data.py -- --n=3 --path=training-3.data --size=50000
+Generate data with replacement by:
+bash generate_data_with_replacement.sh [LENGTH_OF_SEQUENCE]
+Sequences ranging from 1 to 10 in length will be generated if LENGTH_OF_SEQUENCE is not specified.
 
-ipython generate_data.py -- --n=3 --path=validation-3.data --size=10000 --source=validation
+Generate data without replacement by:
+bash generate_data_without_replacement.sh [LENGTH_OF_SEQUENCE]
+Sequences ranging from 1 to 10 in length will be generated if LENGTH_OF_SEQUENCE is not specified. LENGTH_OF_SEQUENCE cannot exceed 10.
 
-ipython generate_data.py -- --n=3 --path=test-3.data --size=10000 --source=test
+### Criterion evaluation
 
-### Run loss evaluation by:
+Evaluate criterions on data generated with replacement by:
+evaluate_with_replacement.sh
 
-ipython -m ipdb evaluate.py -- --n=3 --n-units=256 --pretrained-cnn
+Evaluate criterions on data generated without replacement by:
+bash evaluate_without_replacement.sh
 
 ### TODO
 
-- [] Sequence of 10 digits
+- [] 10-digit sequences generated without replacement
 - [] Experiment on sequences generated with replacement (especially, the performance of RL-based loss, which appears to be unplausible when length of sequence is 1)
-- [] Refactor visualization code
+- [] Entropy regularizer
+- [] Investigate the preformance of trained classifier on MNIST

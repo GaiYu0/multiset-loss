@@ -22,6 +22,7 @@ parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--interval', type=int, default=100)
 # --criterion=semi_cross_entropy/alternative_semi_cross_entropy/regression_loss/rl_loss
 parser.add_argument('--criterion', type=str, default='semi_cross_entropy')
+parser.add_argument('--entropy-scale', type=float, default=1)
 parser.add_argument('--model-path', type=str, default='')
 parser.add_argument('--n', type=int, default=3)
 parser.add_argument('--n-epochs', type=int, default=10)
@@ -61,7 +62,11 @@ cnn_path = args.pretrained_cnn_path if args.pretrained_cnn else None
 model = RNN(args.n_units, 10, cnn_path, cuda)
 if args.gpu > -1:
   model.cuda()
-criterion = getattr(__import__('criterions'), args.criterion)()
+if args.criterion == 'regression_loss':
+  from criterions import regression_loss
+  criterion = regression_loss(args.entropy_scale)
+else:
+  criterion = getattr(__import__('criterions'), args.criterion)()
 if args.gpu > -1:
   criterion.cuda()
 optimizer = Adam(model.parameters(), lr=1e-3)
@@ -100,9 +105,9 @@ for epoch in range(args.n_epochs):
     ratio_list.append(ratio)
 
     if (index + 1) % args.interval == 0:
-      loss_vis.extend(loss_list, True)
+      loss_vis.extend(loss_list, False)
       loss_tb.extend(loss_list, True)
-      ratio_vis.extend(ratio_list, True)
+      ratio_vis.extend(ratio_list, False)
       ratio_tb.extend(ratio_list, True)
       print 'batch %d training loss %f ratio of matching %f' % (index + 1, loss.data[0], ratio)
 
