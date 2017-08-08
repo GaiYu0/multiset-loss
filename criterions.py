@@ -80,7 +80,7 @@ class semi_cross_entropy(Criterion):
       else:
         mask = new_mask
     loss += (loss_c + loss_s).mean()
-    return loss
+    return loss, None
 
 class alternative_semi_cross_entropy(Criterion):
   def __init__(self):
@@ -122,7 +122,7 @@ class alternative_semi_cross_entropy(Criterion):
     # likelihodd maximization is equivalent to negtive likelihood minimization
     loss = -th.mean(loss)
 
-    return loss
+    return loss, None
 
 class regression_loss(Criterion):
   def __init__(self, entropy_scale=1):
@@ -145,6 +145,15 @@ class regression_loss(Criterion):
     data = th.chunk(data, T, 1)
     data = map(th.squeeze, data)
     data = map(F.softmax, data)
+
+    # `data` is a tuple consisting of T tensors with shape (N, C)
+    # entropy regularizer
+    entropy = map(lambda t: th.clamp(t, min=1e-5), data)
+    entropy = map(lambda t: -t * th.log(t), entropy)
+    entropy = map(lambda t: th.sum(t, 1), entropy)
+    entropy = map(th.mean, entropy)
+    entropy = sum(entropy) / T
+
     data = map(lambda t: th.unsqueeze(t, 1), data)
     data = th.cat(data, 1)
 
@@ -157,11 +166,11 @@ class regression_loss(Criterion):
     # regression
     l1 = nn.L1Loss()(data, labels)
 
-    # entropy regularizer
-    data = th.clamp(data, min=1e-5)
-    entropy = -th.mean(data * th.log(data))
+    cache = {}
+    cache['l1'] = l1.data[0]
+    cache['entropy'] = entropy.data[0]
 
-    return l1 + self._entropy_scale * entropy
+    return l1 + self._entropy_scale * entropy, cache
 
 class rl_loss(Criterion):
   def __init__(self):
@@ -208,7 +217,7 @@ class rl_loss(Criterion):
     # reward maximization is equivalent to negtive reward minimization
     loss = -loss
 
-    return loss
+    return loss, None
 
 class ce_loss(Criterion):
   def __init__(self):
@@ -228,4 +237,4 @@ class ce_loss(Criterion):
     log_likelihood = data * labels
     log_likelihood = th.mean(log_likelihood)
     negtive_log_likelihood = -log_likelihood
-    return negtive_log_likelihood
+    return negtive_log_likelihood, None

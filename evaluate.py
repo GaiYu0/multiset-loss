@@ -22,6 +22,8 @@ parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--interval', type=int, default=100)
 # --criterion=semi_cross_entropy/alternative_semi_cross_entropy/regression_loss/rl_loss
 parser.add_argument('--criterion', type=str, default='semi_cross_entropy')
+parser.add_argument('--disable-tensorboard', action='store_true', default=False)
+parser.add_argument('--disable-visdom', action='store_true', default=False)
 parser.add_argument('--entropy-scale', type=float, default=1)
 parser.add_argument('--model-path', type=str, default='')
 parser.add_argument('--n', type=int, default=3)
@@ -31,6 +33,8 @@ parser.add_argument('--pretrained-cnn', action='store_true', default=False)
 parser.add_argument('--tensorboard-log', type=str, default='')
 parser.add_argument('--tensorboard-path', type=str, default='tensorboard-log')
 parser.add_argument('--tensorboard-postfix', type=str, default='')
+parser.add_argument('--plot-entropy', action='store_true', default=False)
+parser.add_argument('--plot-l1', action='store_true', default=False)
 args = parser.parse_args()
 print args
 
@@ -76,13 +80,27 @@ if args.tensorboard_log:
   tb_path += '/%s' % args.tensorboard_log
 TensorboardVisualizer.configure(tb_path)
 loss_list = []
-loss_vis = VisdomVisualizer(vis, {'title': 'loss'})
-loss_tb = TensorboardVisualizer('loss' + args.tensorboard_postfix)
 ratio_list = []
-ratio_vis = VisdomVisualizer(vis, {'title': 'training ratio of matching'})
-ratio_tb = TensorboardVisualizer('training-ratio-of-matching' + args.tensorboard_postfix)
-validation_vis = VisdomVisualizer(vis, {'title': 'validation ratio of matching'})
-validation_tb = TensorboardVisualizer('validation-ratio-of-matching' + args.tensorboard_postfix)
+if not args.disable_tensorboard:
+  loss_tb = TensorboardVisualizer('loss' + args.tensorboard_postfix)
+  ratio_tb = TensorboardVisualizer('training accuracy' + args.tensorboard_postfix)
+  validation_tb = TensorboardVisualizer('validation accuracy' + args.tensorboard_postfix)
+if not args.disable_visdom:
+  loss_vis = VisdomVisualizer(vis, {'title': 'loss'})
+  ratio_vis = VisdomVisualizer(vis, {'title': 'training accuracy'})
+  validation_vis = VisdomVisualizer(vis, {'title': 'validation accuracy'})
+if args.plot_entropy:
+  entropy_list = []
+  if not args.disable_tensorboard:
+    entropy_tb = TensorboardVisualizer('entropy' + args.tensorboard_postfix)
+  if not args.disable_visdom:
+    entropy_vis = VisdomVisualizer(vis, {'title': 'entropy'})
+if args.plot_l1:
+  l1_list = []
+  if not args.disable_tensorboard:
+    l1_tb = TensorboardVisualizer('l1' + args.tensorboard_postfix)
+  if not args.disable_visdom:
+    l1_vis = VisdomVisualizer(vis, {'title': 'l1'})
 
 for epoch in range(args.n_epochs):
   for index, batch in enumerate(training_loader):
@@ -91,13 +109,17 @@ for epoch in range(args.n_epochs):
       data, labels = data.cuda(), labels.cuda()
     data, labels = Variable(data), Variable(labels)
     data = model(data)
-    loss = criterion(data, labels)
+    loss, cache = criterion(data, labels)
     optimizer.zero_grad()
     if args.n_units > 0 or not args.pretrained_cnn:
       loss.backward()
     optimizer.step()
 
     loss_list.append(loss.data[0])
+    if args.plot_entropy:
+      entropy_list.append(cache['entropy'])
+    if args.plot_l1:
+      l1_list.append(cache['l1'])
 
     ns = data.size()[0]
     nm = n_matches(data, labels)
@@ -105,11 +127,26 @@ for epoch in range(args.n_epochs):
     ratio_list.append(ratio)
 
     if (index + 1) % args.interval == 0:
-      loss_vis.extend(loss_list, False)
-      loss_tb.extend(loss_list, True)
-      ratio_vis.extend(ratio_list, False)
-      ratio_tb.extend(ratio_list, True)
-      print 'batch %d training loss %f ratio of matching %f' % (index + 1, loss.data[0], ratio)
+      if not args.disable_visdom:
+        loss_vis.extend(loss_list)
+      if not args.disable_tensorboard:
+        loss_tb.extend(loss_list, True)
+      if not args.disable_visdom:
+        ratio_vis.extend(ratio_list)
+      if not args.disable_tensorboard:
+        ratio_tb.extend(ratio_list, True)
+      if args.plot_entropy:
+        if not args.disable_visdom:
+          entropy_vis.extend(entropy_list)
+        if not args.disable_tensorboard:
+          entropy_tb.extend(entropy_list, True)
+      if args.plot_l1:
+        if not args.disable_visdom:
+          l1_vis.extend(l1_list)
+        if not args.disable_tensorboard:
+          l1_tb.extend(l1_list, True)
+
+      print 'batch %d training loss %f accuracy %f' % (index + 1, loss.data[0], ratio)
 
   ns, nm = 0.0, 0.0
   for index, batch in enumerate(validation_loader):
@@ -121,9 +158,11 @@ for epoch in range(args.n_epochs):
     ns += data.size()[0]
     nm += n_matches(data, labels)
   ratio = nm / ns
-  validation_vis.extend((ratio,))
-  validation_tb.extend((ratio,))
-  print 'epoch %d ratio of matching %f' % (epoch + 1, ratio)
+  if not args.disable_visdom:
+    validation_vis.extend((ratio,))
+  if not args.disable_tensorboard:
+    validation_tb.extend((ratio,))
+  print 'epoch %d validation accuracy %f' % (epoch + 1, ratio)
 
 ns, nm = 0.0, 0.0
 for index, batch in enumerate(test_loader):
@@ -135,7 +174,7 @@ for index, batch in enumerate(test_loader):
   ns += data.size()[0]
   nm += n_matches(data, labels)
 ratio = nm / ns
-print 'ratio of matching %f' % ratio
+print 'test accuracy %f' % ratio
 
 if args.model_path:
   th.save(model.state_dict(), args.model_path)
