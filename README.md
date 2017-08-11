@@ -32,7 +32,5 @@ bash evaluate_entropy_scale.sh [LENGTH_OF_SEQUENCE]
 
 - 10-digit sequences generated without replacement
 - Experiment on sequences generated with replacement (especially, the performance of RL-based loss, which appears to be unplausible when length of sequence is 1)
-- Entropy regularizer
-- Investigate the preformance of trained classifier on MNIST
 - Maximum length of sequence that can be handled
 - Noisy signal on LeNet
